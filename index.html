@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Giri Family!</title>
+  <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+</head>
+<body>
+
+  <header>
+    <div class="header-left">
+      <h1><i class="fa-solid fa-house-chimney"></i> Giri Family!</h1>
+      <span id="current-datetime"></span>
+    </div>
+    <div class="header-right">
+      <div id="weather-header">
+        <i class="fa-solid fa-cloud-sun"></i>
+        <span id="weather-mini">Go to Weather tab to load</span>
+      </div>
+    </div>
+  </header>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active"  onclick="showTab('appointments')"><i class="fa-solid fa-stethoscope"></i> Doctor</button>
+    <button class="tab-btn"         onclick="showTab('reminders')"><i class="fa-solid fa-bell"></i> Reminders</button>
+    <button class="tab-btn"         onclick="showTab('weather')"><i class="fa-solid fa-cloud-sun"></i> Weather</button>
+    <button class="tab-btn"         onclick="showTab('travel')"><i class="fa-solid fa-plane"></i> Travel/Cruise/Getaways</button>
+    <button class="tab-btn"         onclick="showTab('payments')"><i class="fa-solid fa-credit-card"></i> Payment Dues</button>
+    <button class="tab-btn"         onclick="showTab('workschedule')"><i class="fa-solid fa-briefcase"></i> Work Schedule</button>
+    <button class="tab-btn"         onclick="showTab('college')"><i class="fa-solid fa-graduation-cap"></i> College</button>
+    <button class="tab-btn"         onclick="showTab('school')"><i class="fa-solid fa-school"></i> School</button>
+  </nav>
+
+  <main>
+
+    <!-- DOCTOR APPOINTMENTS -->
+    <section id="tab-appointments" class="tab-content active">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-stethoscope"></i> Doctor Appointments</h2>
+        <button class="btn-add" onclick="openModal('appt-modal')"><i class="fa-solid fa-plus"></i> Add Appointment</button>
+      </div>
+      <div id="appt-list" class="card-grid"></div>
+    </section>
+
+    <!-- WEEKLY REMINDERS -->
+    <section id="tab-reminders" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-bell"></i> Weekly Reminders</h2>
+        <button class="btn-add" onclick="openModal('reminder-modal')"><i class="fa-solid fa-plus"></i> Add Reminder</button>
+      </div>
+      <div id="reminder-list" class="card-grid"></div>
+    </section>
+
+    <!-- WEATHER -->
+    <section id="tab-weather" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-cloud-sun"></i> Weather & Temperature</h2>
+        <div class="weather-search">
+          <input type="text" id="city-input" placeholder="Enter city name..." onkeydown="if(event.key==='Enter') fetchWeather()"/>
+          <button class="btn-add" onclick="fetchWeather()"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+          <button class="btn-add" style="background:linear-gradient(135deg,#00897b,#00bcd4)" onclick="autoLoadWeather()"><i class="fa-solid fa-location-crosshairs"></i> My Location</button>
+        </div>
+      </div>
+      <div id="weather-display">
+        <div class="weather-placeholder">
+          <i class="fa-solid fa-location-crosshairs fa-3x"></i>
+          <p>Detecting your location...</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TRAVEL PLANS -->
+    <section id="tab-travel" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-plane"></i> Travel/Cruise/Getaways</h2>
+        <button class="btn-add" onclick="openModal('travel-modal')"><i class="fa-solid fa-plus"></i> Add Trip</button>
+      </div>
+      <div id="travel-list" class="card-grid"></div>
+    </section>
+
+    <!-- PAYMENT DUES -->
+    <section id="tab-payments" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-credit-card"></i> Payment Dues</h2>
+        <button class="btn-add" onclick="openModal('payment-modal')"><i class="fa-solid fa-plus"></i> Add Payment</button>
+      </div>
+      <div id="payment-summary"></div>
+      <div id="payment-list" class="card-grid"></div>
+    </section>
+
+    <!-- WORK SCHEDULE -->
+    <section id="tab-workschedule" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-briefcase"></i> Work Schedule</h2>
+        <button class="btn-add" onclick="openModal('work-modal')"><i class="fa-solid fa-plus"></i> Add Day</button>
+      </div>
+      <div class="work-legend">
+        <span class="badge office">Office</span> = Working from office &nbsp;&nbsp;
+        <span class="badge wfh">WFH</span> = Working from home &nbsp;&nbsp;
+        <span class="badge off">Off</span> = Day off
+      </div>
+      <div id="work-calendar" class="work-calendar-wrap"></div>
+      <div id="work-list" class="card-grid" style="margin-top:1.5rem;"></div>
+    </section>
+
+    <!-- COLLEGE -->
+    <section id="tab-college" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-graduation-cap"></i> SUNY College Schedule</h2>
+        <button class="btn-add" onclick="openModal('college-modal')"><i class="fa-solid fa-plus"></i> Add Semester</button>
+      </div>
+      <div class="college-columns">
+        <div class="college-col">
+          <div class="college-col-header rg"><i class="fa-solid fa-user-graduate"></i> RG College <span>(Rikhu Giri)</span></div>
+          <div id="college-list-rg" class="card-grid"></div>
+        </div>
+        <div class="college-col">
+          <div class="college-col-header kg"><i class="fa-solid fa-user-graduate"></i> KG College <span>(Kusum Giri)</span></div>
+          <div id="college-list-kg" class="card-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCHOOL (Kids) -->
+    <section id="tab-school" class="tab-content">
+      <div class="section-header">
+        <h2><i class="fa-solid fa-school"></i> Kids School Schedule</h2>
+        <button class="btn-add" onclick="openModal('school-modal')"><i class="fa-solid fa-plus"></i> Add School Event</button>
+      </div>
+      <div class="school-columns">
+        <div class="school-col">
+          <div class="school-col-header prisha"><i class="fa-solid fa-child"></i> School Prisha</div>
+          <div id="school-list-prisha" class="card-grid"></div>
+        </div>
+        <div class="school-col">
+          <div class="school-col-header cianna"><i class="fa-solid fa-child"></i> School Cianna</div>
+          <div id="school-list-cianna" class="card-grid"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- Appointment Modal -->
+  <div id="appt-modal" class="modal-overlay" onclick="closeModalOutside(event,'appt-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-stethoscope"></i> Add Doctor Appointment</h3>
+        <button class="modal-close" onclick="closeModal('appt-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Doctor / Specialist</label>
+        <input type="text" id="appt-doctor" placeholder="e.g. Dr. Smith - Family Doctor" />
+        <label>Date</label>
+        <input type="date" id="appt-date" />
+        <label>Time</label>
+        <input type="time" id="appt-time" />
+        <label>Location / Clinic</label>
+        <input type="text" id="appt-location" placeholder="e.g. Main St Medical Center" />
+        <label>Notes</label>
+        <textarea id="appt-notes" placeholder="Things to bring, questions to ask..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('appt-modal')">Cancel</button>
+        <button class="btn-save" onclick="saveAppointment()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reminder Modal -->
+  <div id="reminder-modal" class="modal-overlay" onclick="closeModalOutside(event,'reminder-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-bell"></i> Add Weekly Reminder</h3>
+        <button class="modal-close" onclick="closeModal('reminder-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Reminder Title</label>
+        <input type="text" id="reminder-title" placeholder="e.g. Take medication" />
+        <label>Day of Week</label>
+        <select id="reminder-day">
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+          <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+        </select>
+        <label>Time</label>
+        <input type="time" id="reminder-time" />
+        <label>Repeat</label>
+        <select id="reminder-repeat">
+          <option value="weekly">Every Week</option>
+          <option value="biweekly">Every 2 Weeks</option>
+          <option value="monthly">Monthly</option>
+          <option value="once">One Time Only</option>
+        </select>
+        <label>Notes</label>
+        <textarea id="reminder-notes" placeholder="Additional details..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('reminder-modal')">Cancel</button>
+        <button class="btn-save" onclick="saveReminder()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Travel Modal -->
+  <div id="travel-modal" class="modal-overlay" onclick="closeModalOutside(event,'travel-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-plane"></i> Add Travel/Cruise/Getaway</h3>
+        <button class="modal-close" onclick="closeModal('travel-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Destination</label>
+        <input type="text" id="travel-dest" placeholder="e.g. New York, NY" />
+        <label>Departure Date</label>
+        <input type="date" id="travel-depart" />
+        <label>Return Date</label>
+        <input type="date" id="travel-return" />
+        <label>Airline / Transport</label>
+        <input type="text" id="travel-airline" placeholder="e.g. Delta Airlines - DL123" />
+        <label>Hotel / Stay</label>
+        <input type="text" id="travel-hotel" placeholder="e.g. Marriott Downtown" />
+        <label>Notes</label>
+        <textarea id="travel-notes" placeholder="Packing list, itinerary, reservations..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('travel-modal')">Cancel</button>
+        <button class="btn-save" onclick="saveTravel()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payment Modal -->
+  <div id="payment-modal" class="modal-overlay" onclick="closeModalOutside(event,'payment-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-credit-card"></i> Add Payment Due</h3>
+        <button class="modal-close" onclick="closeModal('payment-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Payment Name</label>
+        <input type="text" id="pay-name" placeholder="e.g. Electricity Bill, Rent, Car Insurance" />
+        <label>Amount ($)</label>
+        <input type="number" id="pay-amount" placeholder="0.00" step="0.01" min="0" />
+        <label>Due Date</label>
+        <input type="date" id="pay-date" />
+        <label>Category</label>
+        <select id="pay-category">
+          <option>Utilities</option><option>Rent / Mortgage</option><option>Insurance</option>
+          <option>Subscriptions</option><option>Credit Card</option><option>Loan</option>
+          <option>Medical</option><option>Other</option>
+        </select>
+        <label>Status</label>
+        <select id="pay-status">
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
+        </select>
+        <label>Notes</label>
+        <textarea id="pay-notes" placeholder="Account number, website, autopay info..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('payment-modal')">Cancel</button>
+        <button class="btn-save" onclick="savePayment()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Work Schedule Modal -->
+  <div id="work-modal" class="modal-overlay" onclick="closeModalOutside(event,'work-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-briefcase"></i> Add Work Day</h3>
+        <button class="modal-close" onclick="closeModal('work-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Date</label>
+        <input type="date" id="work-date" />
+        <label>Type</label>
+        <select id="work-type">
+          <option value="office">Office Day</option>
+          <option value="wfh">Work From Home</option>
+          <option value="off">Day Off / Holiday</option>
+        </select>
+        <label>Notes</label>
+        <textarea id="work-notes" placeholder="Meeting, reason for WFH, etc..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('work-modal')">Cancel</button>
+        <button class="btn-save" onclick="saveWorkDay()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- College Modal -->
+  <div id="college-modal" class="modal-overlay" onclick="closeModalOutside(event,'college-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-graduation-cap"></i> Add SUNY Semester</h3>
+        <button class="modal-close" onclick="closeModal('college-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Student Name</label>
+        <select id="college-student">
+          <option value="Rikhu Giri">Rikhu Giri</option>
+          <option value="Kusum Giri">Kusum Giri</option>
+        </select>
+        <label>Semester / Term</label>
+        <input type="text" id="college-term" placeholder="e.g. Fall 2026, Spring 2027" />
+        <label>Start Date</label>
+        <input type="date" id="college-start" />
+        <label>End Date</label>
+        <input type="date" id="college-end" />
+        <label>Campus / Location</label>
+        <input type="text" id="college-campus" placeholder="e.g. SUNY Albany" />
+        <label>Notes</label>
+        <textarea id="college-notes" placeholder="Course load, major, important dates..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('college-modal')">Cancel</button>
+        <button class="btn-save" onclick="saveCollege()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- School Modal -->
+  <div id="school-modal" class="modal-overlay" onclick="closeModalOutside(event,'school-modal')">
+    <div class="modal">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-school"></i> Add School Event</h3>
+        <button class="modal-close" onclick="closeModal('school-modal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <label>Child</label>
+        <select id="school-child">
+          <option value="Prisha">Prisha</option>
+          <option value="Cianna">Cianna</option>
+        </select>
+        <label>Event Type</label>
+        <select id="school-type">
+          <option value="start">School Year Start</option>
+          <option value="end">School Year End</option>
+          <option value="break">Break / Holiday</option>
+          <option value="event">School Event</option>
+          <option value="exam">Exam / Test</option>
+          <option value="other">Other</option>
+        </select>
+        <label>School Name</label>
+        <input type="text" id="school-name" placeholder="e.g. Lincoln Elementary" />
+        <label>Start Date</label>
+        <input type="date" id="school-start" />
+        <label>End Date <span style="font-weight:400;font-size:0.8rem;">(optional)</span></label>
+        <input type="date" id="school-end" />
+        <label>Notes</label>
+        <textarea id="school-notes" placeholder="Grade, teacher, supply list..."></textarea>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal('school-modal')">Cancel</button>
+        <button class="btn-save" onclick="saveSchool()"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

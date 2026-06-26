@@ -1,23 +1,35 @@
-// ===== LOCAL STORAGE BACKEND =====
-const store = {
-  get: (key) => JSON.parse(localStorage.getItem(key) || '[]'),
-  set: (key, val) => localStorage.setItem(key, JSON.stringify(val)),
+// ===== FIREBASE SETUP =====
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBflDNqX628WSnR7pBq_yb19HFIhOzPoaE",
+  authDomain: "giri-family.firebaseapp.com",
+  databaseURL: "https://giri-family-default-rtdb.firebaseio.com",
+  projectId: "giri-family",
+  storageBucket: "giri-family.firebasestorage.app",
+  messagingSenderId: "34118354942",
+  appId: "1:34118354942:web:600ccd14a0625e2b6b22af"
 };
 
-function dbGet(sheet) {
-  return Promise.resolve(store.get(sheet));
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// ===== DB HELPERS =====
+function dbSave(sheet, obj) {
+  return set(ref(db, `${sheet}/${obj.id}`), obj);
 }
 
-async function dbSave(sheet, obj) {
-  const list = store.get(sheet);
-  const idx = list.findIndex(r => String(r.id) === String(obj.id));
-  if (idx >= 0) list[idx] = obj;
-  else list.push(obj);
-  store.set(sheet, list);
+function dbDelete(sheet, id) {
+  return remove(ref(db, `${sheet}/${id}`));
 }
 
-async function dbDelete(sheet, id) {
-  store.set(sheet, store.get(sheet).filter(r => String(r.id) !== String(id)));
+function dbListen(sheet, callback) {
+  onValue(ref(db, sheet), (snapshot) => {
+    const data = snapshot.val();
+    const list = data ? Object.values(data) : [];
+    callback(list);
+  });
 }
 
 // ===== DATE / TIME CLOCK =====
@@ -31,18 +43,17 @@ setInterval(updateClock, 1000);
 updateClock();
 
 // ===== TABS =====
-function showTab(name) {
+window.showTab = function(name) {
   document.querySelectorAll('.tab-content').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
   event.currentTarget.classList.add('active');
-  if (name === 'workschedule') renderWorkCalendar();
 }
 
 // ===== MODALS =====
-function openModal(id) { document.getElementById(id).classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function closeModalOutside(e, id) { if (e.target.id === id) closeModal(id); }
+window.openModal  = (id) => document.getElementById(id).classList.add('open');
+window.closeModal = (id) => document.getElementById(id).classList.remove('open');
+window.closeModalOutside = (e, id) => { if (e.target.id === id) window.closeModal(id); };
 
 // ===== HELPERS =====
 function daysFromToday(dateStr) {
@@ -55,9 +66,9 @@ function daysFromToday(dateStr) {
 function countdownBadge(dateStr) {
   const diff = daysFromToday(dateStr);
   if (diff === null) return '';
-  if (diff < 0)  return `<div class="countdown past"><i class="fa-solid fa-clock-rotate-left"></i> ${Math.abs(diff)} days ago</div>`;
-  if (diff === 0) return `<div class="countdown today"><i class="fa-solid fa-star"></i> Today!</div>`;
-  if (diff <= 7)  return `<div class="countdown soon"><i class="fa-solid fa-triangle-exclamation"></i> In ${diff} day${diff>1?'s':''}</div>`;
+  if (diff < 0)   return `<div class="countdown past"><i class="fa-solid fa-clock-rotate-left"></i> ${Math.abs(diff)} days ago</div>`;
+  if (diff === 0)  return `<div class="countdown today"><i class="fa-solid fa-star"></i> Today!</div>`;
+  if (diff <= 7)   return `<div class="countdown soon"><i class="fa-solid fa-triangle-exclamation"></i> In ${diff} day${diff>1?'s':''}</div>`;
   return `<div class="countdown future"><i class="fa-regular fa-calendar"></i> In ${diff} days</div>`;
 }
 
@@ -70,75 +81,28 @@ function formatDate(dateStr) {
 function formatTime(timeStr) {
   if (!timeStr) return '';
   const [h, m] = timeStr.split(':');
-  const hr = parseInt(h); const ampm = hr >= 12 ? 'PM' : 'AM';
-  return `${hr % 12 || 12}:${m} ${ampm}`;
-}
-
-function loadingCard() {
-  return `<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading...</div>`;
-}
-
-// ===== EXPORT / IMPORT =====
-function exportData() {
-  const keys = ['appointments','reminders','travel','payments','workdays','college','school'];
-  const data = {};
-  keys.forEach(k => data[k] = store.get(k));
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'giri-family-data.json';
-  a.click();
-}
-
-function importData(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const data = JSON.parse(e.target.result);
-      const keys = ['appointments','reminders','travel','payments','workdays','college','school'];
-      keys.forEach(k => { if (data[k]) store.set(k, data[k]); });
-      alert('Data imported successfully!');
-      renderAll();
-    } catch(err) { alert('Invalid file. Please use a exported JSON file.'); }
-  };
-  reader.readAsText(file);
-}
-
-function renderAll() {
-  renderAppointments();
-  renderReminders();
-  renderTravel();
-  renderPayments();
-  renderWorkCalendar();
-  renderCollege();
-  renderSchool();
+  const hr = parseInt(h);
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? 'PM' : 'AM'}`;
 }
 
 // ===== DOCTOR APPOINTMENTS =====
-async function saveAppointment() {
+window.saveAppointment = async function() {
   const doctor   = document.getElementById('appt-doctor').value.trim();
   const date     = document.getElementById('appt-date').value;
   const time     = document.getElementById('appt-time').value;
   const location = document.getElementById('appt-location').value.trim();
   const notes    = document.getElementById('appt-notes').value.trim();
   if (!doctor || !date) return alert('Please enter doctor name and date.');
-  await dbSave('appointments', { id: Date.now(), doctor, date, time, location, notes });
-  closeModal('appt-modal');
-  ['appt-doctor','appt-date','appt-time','appt-location','appt-notes'].forEach(id => document.getElementById(id).value = '');
-  renderAppointments();
+  const id = Date.now();
+  await dbSave('appointments', { id, doctor, date, time, location, notes });
+  window.closeModal('appt-modal');
+  ['appt-doctor','appt-date','appt-time','appt-location','appt-notes'].forEach(i => document.getElementById(i).value = '');
 }
 
-async function deleteAppointment(id) {
-  if (!confirm('Delete this appointment?')) return;
-  await dbDelete('appointments', id);
-  renderAppointments();
-}
+window.deleteAppointment = (id) => dbDelete('appointments', id);
 
-async function renderAppointments() {
+dbListen('appointments', (list) => {
   const el = document.getElementById('appt-list');
-  const list = await dbGet('appointments');
   list.sort((a,b) => a.date.localeCompare(b.date));
   if (!list.length) { el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-stethoscope"></i>No appointments yet.</div>`; return; }
   el.innerHTML = list.map(a => `
@@ -154,10 +118,13 @@ async function renderAppointments() {
       ${a.notes ? `<div class="card-notes">${a.notes}</div>` : ''}
       <div class="card-actions"><button class="btn-delete" onclick="deleteAppointment(${a.id})"><i class="fa-solid fa-trash"></i> Delete</button></div>
     </div>`).join('');
-}
+});
 
-// ===== WEEKLY REMINDERS =====
-async function saveReminder() {
+// ===== REMINDERS =====
+const dayColors = { Monday:'#0097a7',Tuesday:'#00bcd4',Wednesday:'#00897b',Thursday:'#f97316',Friday:'#eab308',Saturday:'#a855f7',Sunday:'#ec4899' };
+const repeatLabel = { weekly:'Every Week',biweekly:'Every 2 Weeks',monthly:'Monthly',once:'One Time' };
+
+window.saveReminder = async function() {
   const title  = document.getElementById('reminder-title').value.trim();
   const day    = document.getElementById('reminder-day').value;
   const time   = document.getElementById('reminder-time').value;
@@ -165,23 +132,14 @@ async function saveReminder() {
   const notes  = document.getElementById('reminder-notes').value.trim();
   if (!title) return alert('Please enter a reminder title.');
   await dbSave('reminders', { id: Date.now(), title, day, time, repeat, notes });
-  closeModal('reminder-modal');
-  ['reminder-title','reminder-time','reminder-notes'].forEach(id => document.getElementById(id).value = '');
-  renderReminders();
+  window.closeModal('reminder-modal');
+  ['reminder-title','reminder-time','reminder-notes'].forEach(i => document.getElementById(i).value = '');
 }
 
-async function deleteReminder(id) {
-  if (!confirm('Delete this reminder?')) return;
-  await dbDelete('reminders', id);
-  renderReminders();
-}
+window.deleteReminder = (id) => dbDelete('reminders', id);
 
-const dayColors = { Monday:'#0097a7', Tuesday:'#00bcd4', Wednesday:'#00897b', Thursday:'#f97316', Friday:'#eab308', Saturday:'#a855f7', Sunday:'#ec4899' };
-const repeatLabel = { weekly:'Every Week', biweekly:'Every 2 Weeks', monthly:'Monthly', once:'One Time' };
-
-async function renderReminders() {
+dbListen('reminders', (list) => {
   const el = document.getElementById('reminder-list');
-  const list = await dbGet('reminders');
   if (!list.length) { el.innerHTML = `<div class="empty-state"><i class="fa-solid fa-bell"></i>No reminders yet.</div>`; return; }
   const order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   list.sort((a,b) => order.indexOf(a.day) - order.indexOf(b.day));
@@ -192,27 +150,26 @@ async function renderReminders() {
       <div class="card-meta">
         <span><i class="fa-regular fa-calendar-days"></i>${r.day}</span>
         ${r.time ? `<span><i class="fa-regular fa-clock"></i>${formatTime(r.time)}</span>` : ''}
-        <span><i class="fa-solid fa-rotate"></i>${repeatLabel[r.repeat] || r.repeat}</span>
+        <span><i class="fa-solid fa-rotate"></i>${repeatLabel[r.repeat]||r.repeat}</span>
       </div>
       ${r.notes ? `<div class="card-notes">${r.notes}</div>` : ''}
       <div class="card-actions"><button class="btn-delete" onclick="deleteReminder(${r.id})"><i class="fa-solid fa-trash"></i> Delete</button></div>
     </div>`).join('');
-}
+});
 
 // ===== TRAVEL =====
-async function saveTravel() {
+window.saveTravel = async function() {
   const dest=document.getElementById('travel-dest').value.trim(), depart=document.getElementById('travel-depart').value;
   const ret=document.getElementById('travel-return').value, airline=document.getElementById('travel-airline').value.trim();
   const hotel=document.getElementById('travel-hotel').value.trim(), notes=document.getElementById('travel-notes').value.trim();
-  if (!dest||!depart) return alert('Please enter a destination and departure date.');
+  if (!dest||!depart) return alert('Please enter destination and departure date.');
   await dbSave('travel', { id:Date.now(), dest, depart, ret, airline, hotel, notes });
-  closeModal('travel-modal');
-  ['travel-dest','travel-depart','travel-return','travel-airline','travel-hotel','travel-notes'].forEach(id=>document.getElementById(id).value='');
-  renderTravel();
+  window.closeModal('travel-modal');
+  ['travel-dest','travel-depart','travel-return','travel-airline','travel-hotel','travel-notes'].forEach(i=>document.getElementById(i).value='');
 }
-async function deleteTravel(id) { if(!confirm('Delete?')) return; await dbDelete('travel',id); renderTravel(); }
-async function renderTravel() {
-  const el=document.getElementById('travel-list'), list=await dbGet('travel');
+window.deleteTravel = (id) => dbDelete('travel', id);
+dbListen('travel', (list) => {
+  const el=document.getElementById('travel-list');
   list.sort((a,b)=>a.depart.localeCompare(b.depart));
   if (!list.length) { el.innerHTML=`<div class="empty-state"><i class="fa-solid fa-plane"></i>No trips yet.</div>`; return; }
   el.innerHTML=list.map(t=>{
@@ -228,28 +185,33 @@ async function renderTravel() {
       </div>${countdownBadge(t.depart)}${t.notes?`<div class="card-notes">${t.notes}</div>`:''}
       <div class="card-actions"><button class="btn-delete" onclick="deleteTravel(${t.id})"><i class="fa-solid fa-trash"></i> Delete</button></div>
     </div>`;}).join('');
-}
+});
 
 // ===== PAYMENTS =====
-async function savePayment() {
+const catColors={'Utilities':'#00bcd4','Rent / Mortgage':'#0097a7','Insurance':'#00897b','Subscriptions':'#a855f7','Credit Card':'#ef4444','Loan':'#f97316','Medical':'#ec4899','Other':'#94a3b8'};
+window.savePayment = async function() {
   const name=document.getElementById('pay-name').value.trim(), amount=parseFloat(document.getElementById('pay-amount').value)||0;
   const date=document.getElementById('pay-date').value, category=document.getElementById('pay-category').value;
   const status=document.getElementById('pay-status').value, notes=document.getElementById('pay-notes').value.trim();
   if (!name||!date) return alert('Please enter payment name and due date.');
   await dbSave('payments', { id:Date.now(), name, amount, date, category, status, notes });
-  closeModal('payment-modal');
-  ['pay-name','pay-amount','pay-date','pay-notes'].forEach(id=>document.getElementById(id).value='');
-  renderPayments();
+  window.closeModal('payment-modal');
+  ['pay-name','pay-amount','pay-date','pay-notes'].forEach(i=>document.getElementById(i).value='');
 }
-async function deletePayment(id) { if(!confirm('Delete?')) return; await dbDelete('payments',id); renderPayments(); }
-async function togglePaid(id) {
-  const list=await dbGet('payments'), p=list.find(p=>String(p.id)===String(id));
-  if(p){ p.status=p.status==='paid'?'unpaid':'paid'; await dbSave('payments',p); renderPayments(); }
+window.deletePayment = (id) => dbDelete('payments', id);
+window.togglePaid = async function(id) {
+  // read current value then toggle
+  const {getDatabase, ref, get, set} = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js");
+  const snap = await get(ref(db, `payments/${id}`));
+  if (snap.exists()) {
+    const p = snap.val();
+    p.status = p.status === 'paid' ? 'unpaid' : 'paid';
+    await set(ref(db, `payments/${id}`), p);
+  }
 }
-const catColors={'Utilities':'#00bcd4','Rent / Mortgage':'#0097a7','Insurance':'#00897b','Subscriptions':'#a855f7','Credit Card':'#ef4444','Loan':'#f97316','Medical':'#ec4899','Other':'#94a3b8'};
-async function renderPayments() {
+dbListen('payments', (list) => {
   const sumEl=document.getElementById('payment-summary'), listEl=document.getElementById('payment-list');
-  const list=await dbGet('payments'); list.sort((a,b)=>a.date.localeCompare(b.date));
+  list.sort((a,b)=>a.date.localeCompare(b.date));
   const total=list.reduce((s,p)=>s+parseFloat(p.amount||0),0);
   const unpaid=list.filter(p=>p.status==='unpaid').reduce((s,p)=>s+parseFloat(p.amount||0),0);
   const paid=list.filter(p=>p.status==='paid').reduce((s,p)=>s+parseFloat(p.amount||0),0);
@@ -258,7 +220,7 @@ async function renderPayments() {
     <div class="summary-card paid"><div class="amount">$${paid.toFixed(2)}</div><div class="label">Paid</div></div>`;
   if(!list.length){listEl.innerHTML=`<div class="empty-state"><i class="fa-solid fa-credit-card"></i>No payments yet.</div>`;return;}
   listEl.innerHTML=list.map(p=>{
-    const diff=daysFromToday(p.date); const color=catColors[p.category]||'#94a3b8';
+    const diff=daysFromToday(p.date), color=catColors[p.category]||'#94a3b8';
     let sb=`<span class="badge ${p.status}">${p.status==='paid'?'Paid':'Unpaid'}</span>`;
     if(p.status==='unpaid'&&diff!==null&&diff<0) sb+=` <span class="badge overdue">Overdue</span>`;
     else if(p.status==='unpaid'&&diff!==null&&diff<=3) sb+=` <span class="badge upcoming">Due Soon</span>`;
@@ -267,31 +229,29 @@ async function renderPayments() {
         <span><i class="fa-solid fa-receipt" style="color:${color};margin-right:.4rem"></i>${p.name}</span>
         <span style="color:${color}">$${parseFloat(p.amount||0).toFixed(2)}</span></div>
       <div class="card-meta"><span><i class="fa-regular fa-calendar"></i>Due: ${formatDate(p.date)}</span>
-        <span><i class="fa-solid fa-tag"></i>${p.category}</span><span style="margin-top:.2rem">${sb}</span></div>
+        <span><i class="fa-solid fa-tag"></i>${p.category}</span><span>${sb}</span></div>
       ${countdownBadge(p.date)}${p.notes?`<div class="card-notes">${p.notes}</div>`:''}
       <div class="card-actions">
         <button class="btn-toggle-paid" onclick="togglePaid(${p.id})"><i class="fa-solid fa-${p.status==='paid'?'rotate-left':'check'}"></i> ${p.status==='paid'?'Mark Unpaid':'Mark Paid'}</button>
         <button class="btn-delete" onclick="deletePayment(${p.id})"><i class="fa-solid fa-trash"></i> Delete</button>
       </div></div>`;}).join('');
-}
+});
 
 // ===== WORK SCHEDULE =====
-async function saveWorkDay() {
+window.saveWorkDay = async function() {
   const date=document.getElementById('work-date').value, type=document.getElementById('work-type').value;
   const notes=document.getElementById('work-notes').value.trim();
   if (!date) return alert('Please select a date.');
   await dbSave('workdays', { id:date, date, type, notes });
-  closeModal('work-modal');
+  window.closeModal('work-modal');
   document.getElementById('work-date').value=''; document.getElementById('work-notes').value='';
-  renderWorkCalendar();
 }
-async function deleteWorkDay(date) { if(!confirm('Remove?')) return; await dbDelete('workdays',date); renderWorkCalendar(); }
-async function renderWorkCalendar() {
-  const list=await dbGet('workdays'), map={};
-  list.forEach(w=>map[w.date]=w.type);
+window.deleteWorkDay = (date) => dbDelete('workdays', date);
+dbListen('workdays', (list) => {
   const now=new Date(), year=now.getFullYear(), month=now.getMonth();
-  const todayStr=now.toISOString().slice(0,10), firstDay=new Date(year,month,1).getDay();
-  const daysInMonth=new Date(year,month+1,0).getDate();
+  const todayStr=now.toISOString().slice(0,10), map={};
+  list.forEach(w=>map[w.date]=w.type);
+  const firstDay=new Date(year,month,1).getDay(), daysInMonth=new Date(year,month+1,0).getDate();
   const monthName=now.toLocaleDateString('en-US',{month:'long',year:'numeric'});
   const dayLabels=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   let html=`<div class="work-month-title">${monthName}</div>`;
@@ -308,7 +268,7 @@ async function renderWorkCalendar() {
   cells+='</div>';
   document.getElementById('work-calendar').innerHTML=html+cells;
   const el=document.getElementById('work-list');
-  const upcoming=list.filter(w=>w.date>=todayStr).slice(0,12);
+  const upcoming=list.filter(w=>w.date>=todayStr).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,12);
   const colors={office:'#0097a7',wfh:'#00bcd4',off:'#94a3b8'};
   if(!upcoming.length){el.innerHTML=`<div class="empty-state"><i class="fa-solid fa-briefcase"></i>No work days logged yet.</div>`;return;}
   el.innerHTML=upcoming.map(w=>`<div class="card">
@@ -318,22 +278,21 @@ async function renderWorkCalendar() {
     ${countdownBadge(w.date)}${w.notes?`<div class="card-notes">${w.notes}</div>`:''}
     <div class="card-actions"><button class="btn-delete" onclick="deleteWorkDay('${w.date}')"><i class="fa-solid fa-trash"></i> Delete</button></div>
   </div>`).join('');
-}
+});
 
 // ===== COLLEGE =====
-async function saveCollege() {
+window.saveCollege = async function() {
   const student=document.getElementById('college-student').value, term=document.getElementById('college-term').value.trim();
   const start=document.getElementById('college-start').value, end=document.getElementById('college-end').value;
   const campus=document.getElementById('college-campus').value.trim(), notes=document.getElementById('college-notes').value.trim();
   if (!term||!start) return alert('Please enter term and start date.');
   await dbSave('college', { id:Date.now(), student, term, start, end, campus, notes });
-  closeModal('college-modal');
-  ['college-term','college-start','college-end','college-campus','college-notes'].forEach(id=>document.getElementById(id).value='');
-  renderCollege();
+  window.closeModal('college-modal');
+  ['college-term','college-start','college-end','college-campus','college-notes'].forEach(i=>document.getElementById(i).value='');
 }
-async function deleteCollege(id) { if(!confirm('Delete?')) return; await dbDelete('college',id); renderCollege(); }
-async function renderCollege() {
-  const list=await dbGet('college'); list.sort((a,b)=>a.start.localeCompare(b.start));
+window.deleteCollege = (id) => dbDelete('college', id);
+dbListen('college', (list) => {
+  list.sort((a,b)=>a.start.localeCompare(b.start));
   const rg=list.filter(c=>c.student==='Rikhu Giri'), kg=list.filter(c=>c.student==='Kusum Giri');
   function cards(items,color){
     if(!items.length) return `<div class="empty-state"><i class="fa-solid fa-graduation-cap"></i>No semesters yet.</div>`;
@@ -352,24 +311,23 @@ async function renderCollege() {
   }
   document.getElementById('college-list-rg').innerHTML=cards(rg,'var(--accent)');
   document.getElementById('college-list-kg').innerHTML=cards(kg,'var(--green)');
-}
+});
 
 // ===== SCHOOL =====
-async function saveSchool() {
+const schoolTypeIcon={start:'fa-play',end:'fa-stop',break:'fa-umbrella-beach',event:'fa-star',exam:'fa-pencil',other:'fa-circle-info'};
+const schoolTypeLabel={start:'School Year Start',end:'School Year End',break:'Break / Holiday',event:'School Event',exam:'Exam / Test',other:'Other'};
+window.saveSchool = async function() {
   const child=document.getElementById('school-child').value, type=document.getElementById('school-type').value;
   const name=document.getElementById('school-name').value.trim(), start=document.getElementById('school-start').value;
   const end=document.getElementById('school-end').value, notes=document.getElementById('school-notes').value.trim();
   if (!start) return alert('Please enter a start date.');
   await dbSave('school', { id:Date.now(), child, type, name, start, end, notes });
-  closeModal('school-modal');
-  ['school-name','school-start','school-end','school-notes'].forEach(id=>document.getElementById(id).value='');
-  renderSchool();
+  window.closeModal('school-modal');
+  ['school-name','school-start','school-end','school-notes'].forEach(i=>document.getElementById(i).value='');
 }
-async function deleteSchool(id) { if(!confirm('Delete?')) return; await dbDelete('school',id); renderSchool(); }
-const schoolTypeIcon={start:'fa-play',end:'fa-stop',break:'fa-umbrella-beach',event:'fa-star',exam:'fa-pencil',other:'fa-circle-info'};
-const schoolTypeLabel={start:'School Year Start',end:'School Year End',break:'Break / Holiday',event:'School Event',exam:'Exam / Test',other:'Other'};
-async function renderSchool() {
-  const list=await dbGet('school'); list.sort((a,b)=>a.start.localeCompare(b.start));
+window.deleteSchool = (id) => dbDelete('school', id);
+dbListen('school', (list) => {
+  list.sort((a,b)=>a.start.localeCompare(b.start));
   const prisha=list.filter(s=>s.child==='Prisha'), cianna=list.filter(s=>s.child==='Cianna');
   function cards(items,color){
     if(!items.length) return `<div class="empty-state"><i class="fa-solid fa-school"></i>No events yet.</div>`;
@@ -385,10 +343,10 @@ async function renderSchool() {
   }
   document.getElementById('school-list-prisha').innerHTML=cards(prisha,'var(--purple)');
   document.getElementById('school-list-cianna').innerHTML=cards(cianna,'var(--pink)');
-}
+});
 
 // ===== WEATHER =====
-async function fetchWeather(cityOverride) {
+window.fetchWeather = async function(cityOverride) {
   const cityInput=document.getElementById('city-input');
   const city=cityOverride||cityInput.value.trim();
   if (!city) return;
@@ -422,10 +380,10 @@ async function fetchWeather(cityOverride) {
   }
 }
 
-function autoLoadWeather() {
+window.autoLoadWeather = function() {
   const display=document.getElementById('weather-display');
   display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-spinner fa-spin fa-2x"></i><p>Detecting your location...</p></div>`;
-  if (!navigator.geolocation) { display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-triangle-exclamation fa-2x" style="color:#f97316"></i><p>Location not supported. Please enter a city manually.</p></div>`; return; }
+  if (!navigator.geolocation) { display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-triangle-exclamation fa-2x" style="color:#f97316"></i><p>Location not supported. Enter city manually.</p></div>`; return; }
   navigator.geolocation.getCurrentPosition(async (pos) => {
     try {
       const {latitude,longitude}=pos.coords;
@@ -434,13 +392,13 @@ function autoLoadWeather() {
       const desc=weatherDesc(c.weather_code), icon=weatherIcon(c.weather_code);
       const revRes=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`);
       const revData=await revRes.json();
-      const cityName=revData.address.city||revData.address.town||revData.address.village||revData.address.county||'Your Location';
+      const cityName=revData.address.city||revData.address.town||revData.address.village||'Your Location';
       const country=revData.address.country||'';
       document.getElementById('weather-mini').textContent=`${cityName}: ${Math.round(c.temperature_2m)}°F ${desc}`;
       document.getElementById('city-input').value=cityName;
       display.innerHTML=`<div class="weather-card">
         <div class="weather-city"><i class="fa-solid fa-location-crosshairs" style="color:#00bcd4;margin-right:.4rem"></i>${cityName}</div>
-        <div class="weather-country">${country} &nbsp;<span style="font-size:.75rem;color:var(--text3)">Auto-detected • Updates every 10 min</span></div>
+        <div class="weather-country">${country} <span style="font-size:.75rem;color:var(--text3)">Auto-detected • Updates every 10 min</span></div>
         <div class="weather-temp"><i class="${icon}" style="font-size:2.5rem;margin-right:.5rem"></i>${Math.round(c.temperature_2m)}°F</div>
         <div class="weather-desc">${desc}</div>
         <div class="weather-grid">
@@ -449,35 +407,31 @@ function autoLoadWeather() {
           <div class="weather-item"><div class="wi-label">Wind Speed</div><div class="wi-val">${Math.round(c.wind_speed_10m)} mph</div></div>
           <div class="weather-item"><div class="wi-label">Precipitation</div><div class="wi-val">${c.precipitation} mm</div></div>
         </div>
-        <div style="font-size:.75rem;color:var(--text3);margin-top:1rem"><i class="fa-regular fa-clock"></i> Last updated: ${new Date().toLocaleTimeString()} • Source: Open-Meteo</div>
+        <div style="font-size:.75rem;color:var(--text3);margin-top:1rem"><i class="fa-regular fa-clock"></i> Last updated: ${new Date().toLocaleTimeString()}</div>
       </div>`;
-    } catch(e) { display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-triangle-exclamation fa-2x" style="color:#ef4444"></i><p>Could not load weather. Please enter a city manually.</p></div>`; }
+    } catch(e) { display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-triangle-exclamation fa-2x" style="color:#ef4444"></i><p>Could not load weather. Enter city manually.</p></div>`; }
   }, () => {
-    display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-lock fa-2x" style="color:#f97316"></i><p>Location access denied. Please type your city above.</p></div>`;
-    document.getElementById('weather-mini').textContent='Enter city in Weather tab';
+    display.innerHTML=`<div class="weather-placeholder"><i class="fa-solid fa-lock fa-2x" style="color:#f97316"></i><p>Location denied. Type your city above.</p></div>`;
   }, { timeout:10000 });
 }
 
-setInterval(()=>autoLoadWeather(), 10*60*1000);
+setInterval(()=>window.autoLoadWeather(), 10*60*1000);
 
 function weatherDesc(code) {
   const map={0:'Clear Sky',1:'Mainly Clear',2:'Partly Cloudy',3:'Overcast',45:'Foggy',48:'Icy Fog',51:'Light Drizzle',53:'Drizzle',55:'Heavy Drizzle',61:'Slight Rain',63:'Rain',65:'Heavy Rain',71:'Slight Snow',73:'Snow',75:'Heavy Snow',80:'Rain Showers',81:'Rain Showers',82:'Violent Rain',95:'Thunderstorm',96:'Thunderstorm w/ Hail',99:'Thunderstorm w/ Heavy Hail'};
   return map[code]||'Unknown';
 }
 function weatherIcon(code) {
-  if (code===0||code===1) return 'fa-solid fa-sun';
-  if (code===2) return 'fa-solid fa-cloud-sun';
-  if (code===3) return 'fa-solid fa-cloud';
-  if (code<=48) return 'fa-solid fa-smog';
-  if (code<=55) return 'fa-solid fa-cloud-drizzle';
-  if (code<=65) return 'fa-solid fa-cloud-rain';
-  if (code<=75) return 'fa-solid fa-snowflake';
-  if (code<=82) return 'fa-solid fa-cloud-showers-heavy';
+  if(code===0||code===1) return 'fa-solid fa-sun';
+  if(code===2) return 'fa-solid fa-cloud-sun';
+  if(code===3) return 'fa-solid fa-cloud';
+  if(code<=48) return 'fa-solid fa-smog';
+  if(code<=55) return 'fa-solid fa-cloud-drizzle';
+  if(code<=65) return 'fa-solid fa-cloud-rain';
+  if(code<=75) return 'fa-solid fa-snowflake';
+  if(code<=82) return 'fa-solid fa-cloud-showers-heavy';
   return 'fa-solid fa-cloud-bolt';
 }
 
 // ===== INIT =====
-document.addEventListener('DOMContentLoaded', () => {
-  renderAll();
-  autoLoadWeather();
-});
+window.autoLoadWeather();

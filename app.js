@@ -1,6 +1,7 @@
 // ===== FIREBASE SETUP =====
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, push, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getDatabase, ref, set, remove, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { getAuth, signInWithPopup, signOut, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBflDNqX628WSnR7pBq_yb19HFIhOzPoaE",
@@ -12,8 +13,47 @@ const firebaseConfig = {
   appId: "1:34118354942:web:600ccd14a0625e2b6b22af"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const firebaseApp = initializeApp(firebaseConfig);
+const db  = getDatabase(firebaseApp);
+const auth = getAuth(firebaseApp);
+const provider = new GoogleAuthProvider();
+
+const ALLOWED = ['rikhugiri29@gmail.com', 'ksgiri522@gmail.com'];
+
+// ===== AUTH =====
+window.signInWithGoogle = async function() {
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const email = result.user.email;
+    if (!ALLOWED.includes(email)) {
+      await signOut(auth);
+      document.getElementById('login-error').textContent = `Access denied. ${email} is not authorized.`;
+      return;
+    }
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Sign-in failed. Please try again.';
+  }
+}
+
+window.signOutUser = async function() {
+  await signOut(auth);
+}
+
+onAuthStateChanged(auth, (user) => {
+  const loginScreen = document.getElementById('login-screen');
+  const appScreen   = document.getElementById('app-screen');
+  const userInfo    = document.getElementById('user-info');
+  if (user && ALLOWED.includes(user.email)) {
+    loginScreen.style.display = 'none';
+    appScreen.style.display   = 'block';
+    userInfo.textContent = user.displayName || user.email;
+    document.getElementById('login-error').textContent = '';
+  } else {
+    loginScreen.style.display = 'flex';
+    appScreen.style.display   = 'none';
+    userInfo.textContent = '';
+  }
+});
 
 // ===== DB HELPERS =====
 function dbSave(sheet, obj) {

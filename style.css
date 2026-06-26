@@ -671,3 +671,27 @@ main { padding: 2rem; max-width: 1400px; margin: 0 auto; }
 @media (max-width: 700px) {
   .school-columns { grid-template-columns: 1fr; }
 }
+
+/* ===== SYNC BUTTONS ===== */
+.sync-btns {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.btn-sync {
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.4);
+  color: #fff;
+  padding: 0.35rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: background 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.btn-sync:hover { background: rgba(255,255,255,0.35); }

@@ -20,6 +20,13 @@
         <i class="fa-solid fa-cloud-sun"></i>
         <span id="weather-mini">Go to Weather tab to load</span>
       </div>
+      <div class="sync-btns">
+        <button class="btn-sync" onclick="exportData()" title="Export your data to share with wife"><i class="fa-solid fa-download"></i> Export</button>
+        <label class="btn-sync" title="Import data file from wife">
+          <i class="fa-solid fa-upload"></i> Import
+          <input type="file" accept=".json" onchange="importData(event)" style="display:none">
+        </label>
+      </div>
     </div>
   </header>
 
